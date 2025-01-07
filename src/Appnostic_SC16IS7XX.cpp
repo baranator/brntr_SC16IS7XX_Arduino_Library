@@ -26,9 +26,6 @@
 #elif defined(ESP8266) || defined(ESP32) // ESP8266/ESP32
 #define WIRE Wire
 #define SPI_SS PIN_SPI_SS
-#elif ESP32 // ESP8266
-#define WIRE Wire
-#define SPI_SS PIN_SPI_SS
 #else // Arduino Due
 #define WIRE Wire1
 #define SPI_SS PIN_SPI_SS
