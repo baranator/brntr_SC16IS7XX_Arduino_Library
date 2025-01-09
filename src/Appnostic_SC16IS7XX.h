@@ -128,10 +128,11 @@ public:
     virtual void flush();
 
     #if defined(SC16IS7XX_USE_I2C)
-    bool begin_i2c(uint8_t addr);
-    bool begin_i2c();
+    bool begin_i2c(uint8_t addr=SC16IS7XX_ADDRESS_AA, int sda=SDA, int scl=SCL);
+    
     #elif defined(SC16IS7XX_USE_SPI)
     bool begin_spi(uint8_t cs);
+
     bool begin_spi();
     #endif
 

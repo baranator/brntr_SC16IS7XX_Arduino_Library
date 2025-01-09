@@ -132,10 +132,12 @@ void Appnostic_SC16IS7XX::resetDevice(){
 
 /**
  * @brief begins an i2c session for the target address
- * @param addr
+ * @param addr adress of the sc16is7xx
+ * @param sda sda pin number, optional, default by platform
+ * @param scl scl pin number, optional, default by platform
  * @return
  */
-bool Appnostic_SC16IS7XX::begin_i2c(uint8_t addr){
+bool Appnostic_SC16IS7XX::begin_i2c(uint8_t addr, int sda, int scl){
     
     if ((addr >= 0x48) && (addr <= 0x57)){
         device_address = addr;
@@ -148,7 +150,7 @@ bool Appnostic_SC16IS7XX::begin_i2c(uint8_t addr){
         return true; // i2c already running
     }
 
-    WIRE.begin(); // start i2c
+    WIRE.begin(sda,scl); // start i2c
     WIRE.setClock(400000);
     resetDevice();
     delayMicroseconds(100); // let things settle
@@ -156,13 +158,7 @@ bool Appnostic_SC16IS7XX::begin_i2c(uint8_t addr){
     return ping();
 }
 
-/**
- * @brief shorthand method to start i2c as nos8007 default address
- * @return
- */
-bool Appnostic_SC16IS7XX::begin_i2c(){
-    return begin_i2c(SC16IS7XX_ADDRESS_AA);
-}
+
 
 #elif defined(SC16IS7XX_USE_SPI)
 
