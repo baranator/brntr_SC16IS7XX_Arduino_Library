@@ -87,8 +87,7 @@
 #define SC16IS7XX_INT_RHR (0X04)
 
 // Application Related
-
-#define SC16IS7XX_XTAL_FREQ (14745600UL)
+#define SC16IS7XX_XTAL_FREQ (1843200UL) //common value in datasheet of sc16is7xx
 #define SC16IS7XX_PROTOCOL_I2C (0)
 #define SC16IS7XX_PROTOCOL_SPI (1)
 
