@@ -383,3 +383,34 @@ void Appnostic_SC16IS7XX::setGPIOLatch(bool enabled){
     }
     writeRegister(SC16IS7XX_REG_IOCONTROL << 3, tmp_iocontrol);
 }
+/**
+ * @brief   enables gpio pins, disables modem emu
+ * @param which 0=GPIO0:3, 1=GPIO4:7, 2=both
+ */
+void Appnostic_SC16IS7XX::enableGpioMode(uint8_t which){
+    uint8_t tmp_iocontrol;
+
+    tmp_iocontrol = readRegister(SC16IS7XX_REG_IOCONTROL << 3);
+    if( which==0 || which == 2)
+        tmp_iocontrol &= 0xFB;
+    if( which==1 || which == 2)
+        tmp_iocontrol &= 0xFD;
+    writeRegister(SC16IS7XX_REG_IOCONTROL << 3, tmp_iocontrol);
+}
+
+
+/**
+ * @brief   disables gpio pins, enables modem emu
+ * @param which 0=GPIO0:3, 1=GPIO4:7, 2=both
+ */
+void Appnostic_SC16IS7XX::disableGpioMode(uint8_t which){
+    uint8_t tmp_iocontrol;
+
+    tmp_iocontrol = readRegister(SC16IS7XX_REG_IOCONTROL << 3);
+    if( which==0 || which == 2)
+        tmp_iocontrol |= 0x04;
+    if( which==1 || which == 2)
+        tmp_iocontrol |= 0x02;
+    
+    writeRegister(SC16IS7XX_REG_IOCONTROL << 3, tmp_iocontrol);
+}

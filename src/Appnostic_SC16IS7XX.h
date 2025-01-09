@@ -158,6 +158,8 @@ public:
     uint8_t getPortMode();
     void setModemPin(modem_gpio_t gpio);
     void setGPIOLatch(bool enabled);
+    void enableGpioMode(uint8_t which);
+    void disableGpioMode(uint8_t which);
 };
 
 #endif
