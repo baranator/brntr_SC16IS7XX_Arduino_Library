@@ -9,31 +9,40 @@
 #include "WProgram.h"
 #endif // if ARDUINO >= 100
 
-#include <SPI.h>
-#include <Wire.h>
+#if !defined(SC16IS7XX_USE_SPI) && !defined(SC16IS7XX_USE_I2C) ||  defined(SC16IS7XX_USE_SPI) && defined(SC16IS7XX_USE_I2C)
+#error "No protocol for SC161S7XX given, define SC16IS7XX_USE_SPI or SC16IS7XX_USE_I2C"
+#endif
 
-// Device Address
+#if defined(SC16IS7XX_USE_SPI)
+    #include <SPI.h>
+#elif defined(SC16IS7XX_USE_I2C)
+    #include <Wire.h>
+    // Device Address
 
-// A:VDD
-// B:GND
-// C:SCL
-// D:SDA
-#define SC16IS7XX_ADDRESS_AA (0X90)
-#define SC16IS7XX_ADDRESS_AB (0X92)
-#define SC16IS7XX_ADDRESS_AC (0X94)
-#define SC16IS7XX_ADDRESS_AD (0X96)
-#define SC16IS7XX_ADDRESS_BA (0X98)
-#define SC16IS7XX_ADDRESS_BB (0X9A)
-#define SC16IS7XX_ADDRESS_BC (0X9C)
-#define SC16IS7XX_ADDRESS_BD (0X9E)
-#define SC16IS7XX_ADDRESS_CA (0XA0)
-#define SC16IS7XX_ADDRESS_CB (0XA2)
-#define SC16IS7XX_ADDRESS_CC (0XA4)
-#define SC16IS7XX_ADDRESS_CD (0XA6)
-#define SC16IS7XX_ADDRESS_DA (0XA8)
-#define SC16IS7XX_ADDRESS_DB (0XAA)
-#define SC16IS7XX_ADDRESS_DC (0XAC)
-#define SC16IS7XX_ADDRESS_DD (0XAE)
+    // A:VDD
+    // B:GND
+    // C:SCL
+    // D:SDA
+    #define SC16IS7XX_ADDRESS_AA (0X90)
+    #define SC16IS7XX_ADDRESS_AB (0X92)
+    #define SC16IS7XX_ADDRESS_AC (0X94)
+    #define SC16IS7XX_ADDRESS_AD (0X96)
+    #define SC16IS7XX_ADDRESS_BA (0X98)
+    #define SC16IS7XX_ADDRESS_BB (0X9A)
+    #define SC16IS7XX_ADDRESS_BC (0X9C)
+    #define SC16IS7XX_ADDRESS_BD (0X9E)
+    #define SC16IS7XX_ADDRESS_CA (0XA0)
+    #define SC16IS7XX_ADDRESS_CB (0XA2)
+    #define SC16IS7XX_ADDRESS_CC (0XA4)
+    #define SC16IS7XX_ADDRESS_CD (0XA6)
+    #define SC16IS7XX_ADDRESS_DA (0XA8)
+    #define SC16IS7XX_ADDRESS_DB (0XAA)
+    #define SC16IS7XX_ADDRESS_DC (0XAC)
+    #define SC16IS7XX_ADDRESS_DD (0XAE)
+#else
+    #error "invalid protocol for SC16157XX. Set SC16IS7XX_PROTOCOL to SC16IS7XX_PROTOCOL_I2C or SC16IS7XX_PROTOCOL_SPI"
+#endif
+
 
 // General Registers
 #define SC16IS7XX_REG_RHR (0x00)
@@ -83,17 +92,15 @@
 #define SC16IS7XX_PROTOCOL_I2C (0)
 #define SC16IS7XX_PROTOCOL_SPI (1)
 
-typedef enum
-{
+typedef enum{
     MODEM_PIN_GPIO_0 = 0,
     MODEM_PIN_GPIO_1 = 1
 } modem_gpio_t;
 
-class Appnostic_SC16IS7XX : public Stream
-{
+class Appnostic_SC16IS7XX : public Stream{
 private:
-    uint8_t device_protocol = SC16IS7XX_PROTOCOL_I2C;
-    uint8_t device_address = SC16IS7XX_ADDRESS_AA;
+    uint8_t device_protocol;
+    uint8_t device_address;
     uint32_t crystal_frequency = SC16IS7XX_XTAL_FREQ;
 
     // methods that need to be implemented by derived classes
@@ -120,13 +127,13 @@ public:
     using Print::write; // write(str) and write(buf, size)
     virtual void flush();
 
-    // i2c
+    #if defined(SC16IS7XX_USE_I2C)
     bool begin_i2c(uint8_t addr);
     bool begin_i2c();
-
-    // spi
+    #elif defined(SC16IS7XX_USE_SPI)
     bool begin_spi(uint8_t cs);
     bool begin_spi();
+    #endif
 
     // configuration
     void setCrystalFrequency(uint32_t frequency);

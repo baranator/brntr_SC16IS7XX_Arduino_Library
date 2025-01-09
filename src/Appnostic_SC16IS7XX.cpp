@@ -17,19 +17,30 @@
 
 #include "Appnostic_SC16IS7XX.h"
 
-#ifdef __AVR__
-#define WIRE Wire
-#define SPI_SS PIN_SPI_SS
-#elif defined(ARDUINO_MINIMA) // nos8007 minima r4 support
-#define WIRE Wire
-#define SPI_SS PIN_SPI_CS
-#elif defined(ESP8266) || defined(ESP32) // ESP8266/ESP32
-#define WIRE Wire
-#define SPI_SS PIN_SPI_SS
-#else // Arduino Due
-#define WIRE Wire1
-#define SPI_SS PIN_SPI_SS
-#endif // ifdef __AVR__
+#if defined(SC16IS7XX_USE_I2C)
+    #ifdef __AVR__
+        #define WIRE Wire
+    #elif defined(ARDUINO_MINIMA) // nos8007 minima r4 support
+        #define WIRE Wire
+    #elif defined(ESP8266) || defined(ESP32) // ESP8266/ESP32
+        #define WIRE Wire
+    #else // Arduino Due
+        #define WIRE Wire1
+    #endif // ifdef __AVR__
+#elif defined(SC16IS7XX_USE_SPI)
+    #ifdef __AVR__
+        #define SPI_SS PIN_SPI_SS
+    #elif defined(ARDUINO_MINIMA) // nos8007 minima r4 support
+        #define SPI_SS PIN_SPI_CS
+    #elif defined(ESP8266) || defined(ESP32) // ESP8266/ESP32
+        #define SPI_SS PIN_SPI_SS
+    #else // Arduino Due
+        #define SPI_SS PIN_SPI_SS
+    #endif // ifdef __AVR__
+#endif
+
+
+
 
 bool Appnostic_SC16IS7XX::_initialized = false;
 
@@ -41,24 +52,20 @@ bool Appnostic_SC16IS7XX::_initialized = false;
  * @param reg_addr
  * @param val
  */
-void Appnostic_SC16IS7XX::writeRegister(uint8_t reg_addr, uint8_t val)
-{
-    if (device_protocol == SC16IS7XX_PROTOCOL_I2C)
-    {
+void Appnostic_SC16IS7XX::writeRegister(uint8_t reg_addr, uint8_t val){
+    #if defined(SC16IS7XX_USE_I2C)
         WIRE.beginTransmission(device_address);
         WIRE.write(reg_addr);
         WIRE.write(val);
         WIRE.endTransmission(true);
-    }
-    else
-    {
+    #elif defined(SC16IS7XX_USE_SPI)
         ::digitalWrite(device_address, LOW);
         delayMicroseconds(10);
         SPI.transfer(reg_addr);
         SPI.transfer(val);
         delayMicroseconds(10);
         ::digitalWrite(device_address, HIGH);
-    }
+    #endif
 }
 
 /**
@@ -67,27 +74,23 @@ void Appnostic_SC16IS7XX::writeRegister(uint8_t reg_addr, uint8_t val)
  * @param reg_addr
  * @return
  */
-uint8_t Appnostic_SC16IS7XX::readRegister(uint8_t reg_addr)
-{
+uint8_t Appnostic_SC16IS7XX::readRegister(uint8_t reg_addr){
     uint8_t result = 0;
 
-    if (device_protocol == SC16IS7XX_PROTOCOL_I2C)
-    {
+    #if defined(SC16IS7XX_USE_I2C)
         WIRE.beginTransmission(device_address);
         WIRE.write(reg_addr);
         WIRE.endTransmission(false);
         WIRE.requestFrom(device_address, (uint8_t)1);
         result = WIRE.read();
-    }
-    else
-    {
+    #elif defined(SC16IS7XX_USE_SPI)
         ::digitalWrite(device_address, LOW);
         delayMicroseconds(10);
         SPI.transfer(0x80 | reg_addr);
         result = SPI.transfer(0xff);
         delayMicroseconds(10);
         ::digitalWrite(device_address, HIGH);
-    }
+    #endif
 
     return result;
 }
@@ -99,8 +102,7 @@ uint8_t Appnostic_SC16IS7XX::readRegister(uint8_t reg_addr)
  * @note not normally called for nos8007. defaults to 147456000 (Hz)
  * @param frequency
  */
-void Appnostic_SC16IS7XX::setCrystalFrequency(uint32_t frequency)
-{
+void Appnostic_SC16IS7XX::setCrystalFrequency(uint32_t frequency){
     crystal_frequency = frequency;
 }
 
@@ -108,8 +110,7 @@ void Appnostic_SC16IS7XX::setCrystalFrequency(uint32_t frequency)
  * @brief gets the xtal frequency in hertz.
  * @return
  */
-uint32_t Appnostic_SC16IS7XX::getCrystalFrequency()
-{
+uint32_t Appnostic_SC16IS7XX::getCrystalFrequency(){
     return crystal_frequency;
 }
 
@@ -118,8 +119,7 @@ uint32_t Appnostic_SC16IS7XX::getCrystalFrequency()
 /**
  * @brief derived function to reset the device
  */
-void Appnostic_SC16IS7XX::resetDevice()
-{
+void Appnostic_SC16IS7XX::resetDevice(){
     uint8_t reg;
 
     reg = readRegister(SC16IS7XX_REG_IOCONTROL << 3);
@@ -127,6 +127,7 @@ void Appnostic_SC16IS7XX::resetDevice()
     writeRegister(SC16IS7XX_REG_IOCONTROL << 3, reg);
 }
 
+#if defined(SC16IS7XX_USE_I2C)
 /*** I2C *********************************************************/
 
 /**
@@ -134,21 +135,16 @@ void Appnostic_SC16IS7XX::resetDevice()
  * @param addr
  * @return
  */
-bool Appnostic_SC16IS7XX::begin_i2c(uint8_t addr)
-{
-
-    if ((addr >= 0x48) && (addr <= 0x57))
-    {
+bool Appnostic_SC16IS7XX::begin_i2c(uint8_t addr){
+    
+    if ((addr >= 0x48) && (addr <= 0x57)){
         device_address = addr;
-    }
-    else
-    {
+    }else{
         device_address = (addr >> 1);
     }
     device_protocol = SC16IS7XX_PROTOCOL_I2C;
 
-    if (_initialized == true)
-    {
+    if (_initialized == true){
         return true; // i2c already running
     }
 
@@ -164,10 +160,11 @@ bool Appnostic_SC16IS7XX::begin_i2c(uint8_t addr)
  * @brief shorthand method to start i2c as nos8007 default address
  * @return
  */
-bool Appnostic_SC16IS7XX::begin_i2c()
-{
+bool Appnostic_SC16IS7XX::begin_i2c(){
     return begin_i2c(SC16IS7XX_ADDRESS_AA);
 }
+
+#elif defined(SC16IS7XX_USE_SPI)
 
 /*** SPI *********************************************************/
 
@@ -177,8 +174,7 @@ bool Appnostic_SC16IS7XX::begin_i2c()
  * @param cs
  * @return
  */
-bool Appnostic_SC16IS7XX::begin_spi(uint8_t cs)
-{
+bool Appnostic_SC16IS7XX::begin_spi(uint8_t cs){
     device_protocol = SC16IS7XX_PROTOCOL_SPI;
     device_address = cs;
 
@@ -201,10 +197,11 @@ bool Appnostic_SC16IS7XX::begin_spi(uint8_t cs)
  * @brief shorthand to start spi at default CS pin
  * @return
  */
-bool Appnostic_SC16IS7XX::begin_spi()
-{
+bool Appnostic_SC16IS7XX::begin_spi(){
     return begin_spi(SPI_SS);
 }
+
+#endif
 
 /*** GPIO **************************************************/
 
@@ -213,18 +210,14 @@ bool Appnostic_SC16IS7XX::begin_spi()
  * @param pin 0 - 7
  * @param mode INPUT, OUTPUT
  */
-void Appnostic_SC16IS7XX::pinMode(uint8_t pin, uint8_t mode)
-{
+void Appnostic_SC16IS7XX::pinMode(uint8_t pin, uint8_t mode){
     uint8_t tmp_iodir;
 
     tmp_iodir = readRegister(SC16IS7XX_REG_IODIR << 3);
 
-    if (mode == OUTPUT)
-    {
+    if (mode == OUTPUT){
         tmp_iodir |= (0x01 << pin);
-    }
-    else
-    {
+    }else{
         tmp_iodir &= (uint8_t) ~(0x01 << pin);
     }
 
@@ -236,18 +229,14 @@ void Appnostic_SC16IS7XX::pinMode(uint8_t pin, uint8_t mode)
  * @param pin 0 - 7
  * @param state 0 = LOW, 1 = HIGH
  */
-void Appnostic_SC16IS7XX::digitalWrite(uint8_t pin, uint8_t state)
-{
+void Appnostic_SC16IS7XX::digitalWrite(uint8_t pin, uint8_t state){
     uint8_t tmp_iostate;
 
     tmp_iostate = readRegister(SC16IS7XX_REG_IOSTATE << 3);
 
-    if (state == 1)
-    {
+    if (state == 1){
         tmp_iostate |= (0x01 << pin);
-    }
-    else
-    {
+    }else{
         tmp_iostate &= (uint8_t) ~(0x01 << pin);
     }
 
@@ -259,14 +248,12 @@ void Appnostic_SC16IS7XX::digitalWrite(uint8_t pin, uint8_t state)
  * @param pin 0 - 7
  * @return 0 = LOW, 1 = HIGH
  */
-uint8_t Appnostic_SC16IS7XX::digitalRead(uint8_t pin)
-{
+uint8_t Appnostic_SC16IS7XX::digitalRead(uint8_t pin){
     uint8_t tmp_iostate;
 
     tmp_iostate = readRegister(SC16IS7XX_REG_IOSTATE << 3);
 
-    if ((tmp_iostate & (0x01 << pin)) == 0)
-    {
+    if ((tmp_iostate & (0x01 << pin)) == 0){
         return 0;
     }
     return 1;
@@ -277,8 +264,7 @@ uint8_t Appnostic_SC16IS7XX::digitalRead(uint8_t pin)
  * @note enables all six types of interrupts
  * @param enabled
  */
-void Appnostic_SC16IS7XX::enableInterruptControl(bool enabled)
-{
+void Appnostic_SC16IS7XX::enableInterruptControl(bool enabled){
     writeRegister(SC16IS7XX_REG_IER << 3, enabled);
 }
 
@@ -288,18 +274,14 @@ void Appnostic_SC16IS7XX::enableInterruptControl(bool enabled)
  * @param pin the pin to configure an interrupt on
  * @param enabled true enables the interrupt, false disables it
  */
-void Appnostic_SC16IS7XX::setPinInterrupt(uint8_t pin, bool enabled)
-{
+void Appnostic_SC16IS7XX::setPinInterrupt(uint8_t pin, bool enabled){
     uint8_t tmp_iostate;
 
     tmp_iostate = readRegister(SC16IS7XX_REG_IOINTENA << 3);
 
-    if (enabled == true)
-    {
+    if (enabled == true){
         tmp_iostate |= (0x01 << pin);
-    }
-    else
-    {
+    }else{
         tmp_iostate &= (uint8_t) ~(0x01 << pin);
     }
 
@@ -311,14 +293,12 @@ void Appnostic_SC16IS7XX::setPinInterrupt(uint8_t pin, bool enabled)
  * @param pin
  * @return
  */
-uint8_t Appnostic_SC16IS7XX::getPinInterrupt(uint8_t pin)
-{
+uint8_t Appnostic_SC16IS7XX::getPinInterrupt(uint8_t pin){
     uint8_t tmp_iostate;
 
     tmp_iostate = readRegister(SC16IS7XX_REG_IOINTENA << 3);
 
-    if ((tmp_iostate & (0x01 << pin)) == 0)
-    {
+    if ((tmp_iostate & (0x01 << pin)) == 0){
         return 0;
     }
     return 1;
@@ -329,8 +309,7 @@ uint8_t Appnostic_SC16IS7XX::getPinInterrupt(uint8_t pin)
  *          of interrupt-enabled pins and track their changes.
  * @return
  */
-int Appnostic_SC16IS7XX::getLastInterruptPin()
-{
+int Appnostic_SC16IS7XX::getLastInterruptPin(){
     return -1;
 }
 
@@ -338,16 +317,14 @@ int Appnostic_SC16IS7XX::getLastInterruptPin()
  * @brief   used to determine interrupt source. it should really be
  *          fleshed out better with callbacks.
  */
-uint8_t Appnostic_SC16IS7XX::isr()
-{
+uint8_t Appnostic_SC16IS7XX::isr(){
     uint8_t irq_src;
 
     irq_src = readRegister(SC16IS7XX_REG_IIR << 3);
     // irq_src = (irq_src >> 1);
     // irq_src &= 0x3F;
 
-    switch (irq_src)
-    {
+    switch (irq_src){
     case SC16IS7XX_INT_LINE: // Receiver Line Status Error
         break;
     case SC16IS7XX_INT_TIMEOUT: // Receiver time-out interrupt
@@ -371,53 +348,41 @@ uint8_t Appnostic_SC16IS7XX::isr()
     return irq_src;
 }
 
-void Appnostic_SC16IS7XX::setPortState(uint8_t state)
-{
+void Appnostic_SC16IS7XX::setPortState(uint8_t state){
     writeRegister(SC16IS7XX_REG_IOSTATE << 3, state);
 }
 
-uint8_t Appnostic_SC16IS7XX::getPortState()
-{
+uint8_t Appnostic_SC16IS7XX::getPortState(){
     return readRegister(SC16IS7XX_REG_IOSTATE << 3);
 }
 
-void Appnostic_SC16IS7XX::setPortMode(uint8_t mode)
-{
+void Appnostic_SC16IS7XX::setPortMode(uint8_t mode){
     writeRegister(SC16IS7XX_REG_IODIR << 3, mode);
 }
 
-uint8_t Appnostic_SC16IS7XX::getPortMode()
-{
+uint8_t Appnostic_SC16IS7XX::getPortMode(){
     return readRegister(SC16IS7XX_REG_IODIR << 3);
 }
 
-void Appnostic_SC16IS7XX::setModemPin(modem_gpio_t gpio)
-{
+void Appnostic_SC16IS7XX::setModemPin(modem_gpio_t gpio){
     uint8_t tmp_iocontrol;
 
     tmp_iocontrol = readRegister(SC16IS7XX_REG_IOCONTROL << 3);
-    if (gpio == MODEM_PIN_GPIO_0)
-    {
+    if (gpio == MODEM_PIN_GPIO_0){
         tmp_iocontrol |= 0x02;
-    }
-    else
-    {
+    }else{
         tmp_iocontrol &= 0xFD;
     }
     writeRegister(SC16IS7XX_REG_IOCONTROL << 3, tmp_iocontrol);
 }
 
-void Appnostic_SC16IS7XX::setGPIOLatch(bool enabled)
-{
+void Appnostic_SC16IS7XX::setGPIOLatch(bool enabled){
     uint8_t tmp_iocontrol;
 
     tmp_iocontrol = readRegister(SC16IS7XX_REG_IOCONTROL << 3);
-    if (enabled == false)
-    {
+    if (enabled == false){
         tmp_iocontrol &= 0xFE;
-    }
-    else
-    {
+    }else{
         tmp_iocontrol |= 0x01;
     }
     writeRegister(SC16IS7XX_REG_IOCONTROL << 3, tmp_iocontrol);
