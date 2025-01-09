@@ -28,6 +28,11 @@
         #define WIRE Wire1
     #endif // ifdef __AVR__
 #elif defined(SC16IS7XX_USE_SPI)
+    
+    const SPISettings SPI_SETTINGS(2000000, MSBFIRST, SPI_MODE0);
+
+
+//TODO: useful at all? as every slave has own cs?
     #ifdef __AVR__
         #define SPI_SS PIN_SPI_SS
     #elif defined(ARDUINO_MINIMA) // nos8007 minima r4 support
@@ -59,12 +64,14 @@ void Appnostic_SC16IS7XX::writeRegister(uint8_t reg_addr, uint8_t val){
         WIRE.write(val);
         WIRE.endTransmission(true);
     #elif defined(SC16IS7XX_USE_SPI)
+        SPI.beginTransaction(SPI_SETTINGS);
         ::digitalWrite(device_address, LOW);
         delayMicroseconds(10);
         SPI.transfer(reg_addr);
         SPI.transfer(val);
         delayMicroseconds(10);
         ::digitalWrite(device_address, HIGH);
+        SPI.endTransaction();
     #endif
 }
 
@@ -84,12 +91,14 @@ uint8_t Appnostic_SC16IS7XX::readRegister(uint8_t reg_addr){
         WIRE.requestFrom(device_address, (uint8_t)1);
         result = WIRE.read();
     #elif defined(SC16IS7XX_USE_SPI)
+        SPI.beginTransaction(SPI_SETTINGS);
         ::digitalWrite(device_address, LOW);
         delayMicroseconds(10);
         SPI.transfer(0x80 | reg_addr);
         result = SPI.transfer(0xff);
         delayMicroseconds(10);
         ::digitalWrite(device_address, HIGH);
+        SPI.endTransaction();
     #endif
 
     return result;
@@ -179,13 +188,16 @@ bool Appnostic_SC16IS7XX::begin_spi(uint8_t cs){
         return true; // spi already running
     }
 
-    ::pinMode(device_address, OUTPUT);
-    ::digitalWrite(device_address, HIGH);
-    SPI.beginTransaction(SPISettings(2000000, MSBFIRST, SPI_MODE0));
+    
     SPI.begin();
+    ::pinMode(device_address, OUTPUT);
+    ::digitalWrite(device_address, LOW);
+    SPI.beginTransaction(SPI_SETTINGS);
     resetDevice();
     delayMicroseconds(100); // let things settle
     _initialized = true;
+    ::digitalWrite(device_address, HIGH);
+    SPI.endTransaction();
     return ping();
 }
 
